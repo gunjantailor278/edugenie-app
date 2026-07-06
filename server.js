@@ -1,4 +1,4 @@
-require('dotenv').config();
+ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 
@@ -6,8 +6,8 @@ const app = express();
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-5';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 // Free-plan-style usage cap — mirrors Claude.ai's free plan so you never
 // burn through more of your API credit than a "free plan" would allow.
@@ -36,20 +36,20 @@ function formatDuration(ms) {
   return `${hrs} hour${hrs === 1 ? '' : 's'}${remMins ? ` ${remMins} min` : ''}`;
 }
 
-if (!ANTHROPIC_API_KEY) {
-  console.warn('\n⚠️  ANTHROPIC_API_KEY is not set.');
+if (!GEMINI_API_KEY) {
+  console.warn('\n⚠️  GEMINI_API_KEY is not set.');
   console.warn('   1. Copy .env.example to .env');
-  console.warn('   2. Add your key from https://console.anthropic.com/settings/keys');
+  console.warn('   2. Add your free key from https://aistudio.google.com/apikey');
   console.warn('   3. Restart the server (npm start)\n');
 }
 
 // EduGenie (geniED chat, quiz generation, note summaries) all call this
-// single endpoint. The Anthropic API key stays on the server and is
+// single endpoint. The Gemini API key stays on the server and is
 // NEVER sent to the browser.
 app.post('/api/chat', async (req, res) => {
-  if (!ANTHROPIC_API_KEY) {
+  if (!GEMINI_API_KEY) {
     return res.status(500).json({
-      error: { message: 'Server is missing ANTHROPIC_API_KEY. Add it to your .env file and restart the server.' }
+      error: { message: 'Server is missing GEMINI_API_KEY. Add it to your .env file and restart the server.' }
     });
   }
 
@@ -67,37 +67,49 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: max_tokens || 1024,
-        ...(system ? { system } : {}),
-        messages
-      })
-    });
+    // Convert our {role: 'user'|'assistant', content} messages into
+    // Gemini's {role: 'user'|'model', parts: [{text}]} format.
+    const contents = messages.map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
 
-    const data = await anthropicRes.json();
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+          contents,
+          generationConfig: { maxOutputTokens: max_tokens || 1024 }
+        })
+      }
+    );
 
-    if (!anthropicRes.ok) {
-      console.error('Anthropic API error:', data);
-      return res.status(anthropicRes.status).json(data);
+    const data = await geminiRes.json();
+
+    if (!geminiRes.ok) {
+      console.error('Gemini API error:', data);
+      return res.status(geminiRes.status).json({ error: { message: data.error?.message || 'Gemini API error' } });
     }
 
-    res.json(data);
+    const text = (data.candidates?.[0]?.content?.parts || [])
+      .map(p => p.text)
+      .filter(Boolean)
+      .join('\n');
+
+    // Reshape into the same {content: [{type:'text', text}]} format the
+    // frontend already expects, so public/index.html needs ZERO changes.
+    res.json({ content: [{ type: 'text', text }] });
   } catch (err) {
     console.error('Proxy error:', err);
-    res.status(500).json({ error: { message: 'Failed to reach the Anthropic API', details: err.message } });
+    res.status(500).json({ error: { message: 'Failed to reach the Gemini API', details: err.message } });
   }
 });
 
 app.get('/health', (req, res) => {
-  res.json({ ok: true, hasApiKey: Boolean(ANTHROPIC_API_KEY), model: MODEL, rateLimit: { max: RATE_LIMIT_MAX, windowHours: RATE_LIMIT_WINDOW_MS / 3600000 } });
+  res.json({ ok: true, hasApiKey: Boolean(GEMINI_API_KEY), model: MODEL, rateLimit: { max: RATE_LIMIT_MAX, windowHours: RATE_LIMIT_WINDOW_MS / 3600000 } });
 });
 
 const PORT = process.env.PORT || 3000;
