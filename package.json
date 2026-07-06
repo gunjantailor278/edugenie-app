@@ -1,0 +1,16 @@
+{
+  "name": "edugenie",
+  "version": "1.0.0",
+  "description": "EduGenie - AI-powered study platform (geniED tutor, quiz generator, note summarizer) with a secure Node backend that keeps the Anthropic API key server-side.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
