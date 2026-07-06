@@ -1,86 +1,93 @@
-# EduGenie — Setup Guide (Hinglish)
+ # EduGenie — Setup Guide
 
-Yeh ab ek **full-stack** app hai: frontend (`public/index.html`) + ek chota Node/Express backend (`server.js`) jo tumhari Anthropic API key ko safely server-side pe rakhta hai aur browser ko kabhi expose nahi karta.
+This is now a **full-stack** app: frontend (`public/index.html`) + a small Node/Express backend (`server.js`) that keeps your Anthropic API key safely on the server side and never exposes it to the browser.
 
-geniED chat, Quiz Generator, aur Note Summarizer — teeno isi backend ke `/api/chat` route se real AI (Claude Sonnet 5) ko call karte hain.
+geniED chat, Quiz Generator, and Note Summarizer — all three call real AI (Claude Sonnet 5) through the backend's `/api/chat` route.
 
-## 1. Node.js install karo (agar nahi hai)
+## 1. Install Node.js (if you don't have it)
 
-Node.js v18 ya usse upar chahiye. Check karo:
+You need Node.js v18 or higher. Check with:
+
 ```
 node -v
 ```
-Agar nahi hai, https://nodejs.org se install karo.
 
-## 2. Dependencies install karo
+If it's not installed, get it from <https://nodejs.org>.
 
-Is folder (`edugenie-app`) ke andar terminal khol ke:
+## 2. Install dependencies
+
+Open a terminal inside this folder (`edugenie-app`) and run:
+
 ```
 npm install
 ```
 
-## 3. Apni API key set karo
+## 3. Set up your API key
 
-1. `.env.example` file ka naam copy karke `.env` banao:
+1. Copy the `.env.example` file and rename it to `.env`:
+
    ```
    cp .env.example .env
    ```
-   (Windows pe: `.env.example` ko copy-paste karke naam `.env` rakh do)
 
-2. `.env` file kholo aur apni real Anthropic API key daalo:
+   (On Windows: copy-paste `.env.example` and rename the copy to `.env`)
+
+2. Open the `.env` file and add your real Anthropic API key:
+
    ```
    ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxx
    ```
-   Key yahan se milegi: https://console.anthropic.com/settings/keys
-   (Agar account nahi hai toh pehle console.anthropic.com pe signup karo — kuch free credits milte hain naye accounts ko.)
 
-   ⚠️ `.env` file ko kabhi bhi GitHub pe public repo mein push mat karna — isme tumhari secret key hai.
+   You can get a key from <https://console.anthropic.com/settings/keys> (if you don't have an account, sign up at console.anthropic.com first — new accounts get some free credits).
 
-## 4. Server chalao
+   ⚠️ Never push the `.env` file to a public GitHub repo — it contains your secret key.
+
+## 4. Run the server
 
 ```
 npm start
 ```
 
-Terminal mein yeh dikhega:
+You should see this in the terminal:
+
 ```
 🚀 EduGenie is running: http://localhost:3000
 ```
 
-## 5. App kholo
+## 5. Open the app
 
-Browser mein `http://localhost:3000` kholo — poora EduGenie app (landing page, sign-in, geniED, quiz, notes, sab) yahin se chalega, aur ab geniED, quiz generator, aur note summarizer **real AI** se sahi javab denge.
+Open `http://localhost:3000` in your browser — the entire EduGenie app (landing page, sign-in, geniED, quiz, notes, everything) runs from here, and now geniED, the quiz generator, and the note summarizer all respond with **real AI**.
 
 ---
 
-## Kaise kaam karta hai (short mein)
+## How it works (in short)
 
-- Browser (`public/index.html`) kabhi bhi Anthropic ko seedha call nahi karta.
-- Browser sirf apne khud ke server ke `/api/chat` route ko call karta hai.
-- `server.js` woh request leke, tumhari secret `ANTHROPIC_API_KEY` attach karke, Anthropic ko forward karta hai, aur response wapas browser ko bhej deta hai.
-- Isse tumhari API key kabhi bhi kisi user ke browser mein dikhti/churayi nahi ja sakti.
+- The browser (`public/index.html`) never calls Anthropic directly.
+- The browser only calls its own server's `/api/chat` route.
+- `server.js` takes that request, attaches your secret `ANTHROPIC_API_KEY`, forwards it to Anthropic, and sends the response back to the browser.
+- This means your API key can never be seen or stolen from any user's browser.
 
-## Real duniya mein deploy karna (Render.com — free)
+## Deploying to production (Render.com — free)
 
-⚠️ **GitHub Pages is file ko run NAHI kar sakta** — GitHub Pages sirf static HTML/CSS/JS serve karta hai, Node.js backend (`server.js`) nahi chala sakta. Isliye Render.com (ya Railway/Fly.io) use karo.
+⚠️ **GitHub Pages CANNOT run this** — GitHub Pages only serves static HTML/CSS/JS, it can't run a Node.js backend (`server.js`). So use Render.com (or Railway/Fly.io) instead.
 
-**Render.com pe deploy karne ke steps:**
+**Steps to deploy on Render.com:**
 
-1. Is poore folder (`edugenie-app`) ko GitHub repo mein upload karo — **root mein** `server.js`, `package.json`, aur `public/` folder rakhna, kisi zip/subfolder ke andar nahi.
-2. https://render.com pe GitHub se sign up karo.
-3. Dashboard mein **"New +" → "Web Service"** → apni repo select karo.
+1. Upload this entire folder (`edugenie-app`) to a GitHub repo — keep `server.js`, `package.json`, and the `public/` folder **at the root**, not inside a zip or subfolder.
+2. Sign up at <https://render.com> using GitHub.
+3. In the dashboard, click **"New +" → "Web Service"** → select your repo.
 4. Settings:
    - Runtime: **Node**
    - Build Command: `npm install`
    - Start Command: `node server.js`
    - Instance Type: **Free**
-5. **Environment Variables** section mein add karo:
-   - `ANTHROPIC_API_KEY` = apni real key
+5. In the **Environment Variables** section, add:
+   - `ANTHROPIC_API_KEY` = your real key
    - `RATE_LIMIT_MAX` = `40` (optional)
-   - `RATE_LIMIT_WINDOW_MS` = `18000000` (optional, 5 ghante)
-6. **"Create Web Service"** — 2-3 min mein live URL milega jaise `https://edugenie.onrender.com`
+   - `RATE_LIMIT_WINDOW_MS` = `18000000` (optional, 5 hours)
+6. Click **"Create Web Service"** — you'll get a live URL in 2-3 minutes, like `https://edugenie.onrender.com`
 
-## Abhi bhi demo/simulated cheezein
+## Still demo/simulated features
 
-- **Google Sign-In aur Email OTP** abhi bhi UI-level simulation hain (verification code toast mein dikhta hai, real email nahi jaata) — kyunki real Google OAuth ke liye Google Cloud Console pe app register karni padti hai, aur real email bhejne ke liye ek email-service (jaise Resend, SendGrid) chahiye. Agar chaho toh yeh bhi add karwa sakte ho — bata dena.
-- Dashboard ke shuruaati sample notes/quizzes sirf demo data hain, koi bug nahi hai.
+- **Google Sign-In and Email OTP** are still UI-level simulations (the verification code shows up in a toast, no real email is sent) — because real Google OAuth requires registering the app on Google Cloud Console, and sending real emails requires an email service (like Resend or SendGrid). If you want, these can be added too — just ask.
+- The sample notes/quizzes shown initially on the dashboard are just demo data, not a bug.
